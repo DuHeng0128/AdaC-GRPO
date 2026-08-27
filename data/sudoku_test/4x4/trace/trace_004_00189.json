@@ -1,0 +1,272 @@
+[
+  {
+    "id": 0,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 0,
+    "c": 1,
+    "value": 4,
+    "candidates_before": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 1,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 0,
+    "c": 2,
+    "value": 4,
+    "candidates_before": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 2,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 0,
+    "c": 1,
+    "value": 3,
+    "candidates_before": [
+      1,
+      2,
+      3
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 3,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 2,
+    "c": 3,
+    "value": 3,
+    "candidates_before": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 4,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 0,
+    "c": 2,
+    "value": 3,
+    "candidates_before": [
+      1,
+      2,
+      3
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 5,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 3,
+    "c": 3,
+    "value": 3,
+    "candidates_before": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 6,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 0,
+    "c": 1,
+    "value": 1,
+    "candidates_before": [
+      1,
+      2
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 7,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 3,
+    "c": 1,
+    "value": 1,
+    "candidates_before": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 8,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 0,
+    "c": 2,
+    "value": 2,
+    "candidates_before": [
+      1,
+      2
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 9,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 2,
+    "c": 3,
+    "value": 4,
+    "candidates_before": [
+      1,
+      2,
+      4
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 10,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 3,
+    "c": 3,
+    "value": 4,
+    "candidates_before": [
+      1,
+      2,
+      4
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 11,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 2,
+    "c": 3,
+    "value": 1,
+    "candidates_before": [
+      1,
+      2
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 12,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 3,
+    "c": 1,
+    "value": 4,
+    "candidates_before": [
+      2,
+      3,
+      4
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 13,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 3,
+    "c": 1,
+    "value": 2,
+    "candidates_before": [
+      2,
+      3
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 14,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 3,
+    "c": 3,
+    "value": 2,
+    "candidates_before": [
+      1,
+      2
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 15,
+    "rule": "naked_single",
+    "action": "assign",
+    "r": 0,
+    "c": 1,
+    "value": 2,
+    "candidates_before": [
+      2
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 16,
+    "rule": "naked_single",
+    "action": "assign",
+    "r": 0,
+    "c": 2,
+    "value": 1,
+    "candidates_before": [
+      1
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 17,
+    "rule": "naked_single",
+    "action": "assign",
+    "r": 2,
+    "c": 3,
+    "value": 2,
+    "candidates_before": [
+      2
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 18,
+    "rule": "naked_single",
+    "action": "assign",
+    "r": 3,
+    "c": 1,
+    "value": 3,
+    "candidates_before": [
+      3
+    ],
+    "timestamp": 1757000575.3554912
+  },
+  {
+    "id": 19,
+    "rule": "naked_single",
+    "action": "assign",
+    "r": 3,
+    "c": 3,
+    "value": 1,
+    "candidates_before": [
+      1
+    ],
+    "timestamp": 1757000575.3554912
+  }
+]
