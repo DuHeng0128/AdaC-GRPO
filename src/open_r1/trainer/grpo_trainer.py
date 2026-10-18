@@ -459,7 +459,7 @@ class Qwen2VLGRPOTrainer(Trainer):
         input_copy = self.remove_none_from_data(input_copy)
         
         if inputs[0]['data_type'] == 'image':
-            input_copy[0]['content'][0]['image'] = os.getcwd() + "/" + inputs[0]['puzzle_path']
+            input_copy[0]['content'][0]['image'] = os.path.abspath(inputs[0]['puzzle_path'])
             #input_copy[0]['content'][0]['image'] = os.getcwd() + "/sudoku/" + inputs[0]['path']
         elif inputs[0]['data_type'] == 'video':
             #input_copy[0]['content'][0]['video'] = os.getcwd() + "/" + inputs[0]['puzzle_path']

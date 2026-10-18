@@ -1,0 +1,153 @@
+[
+  {
+    "id": 0,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 0,
+    "c": 0,
+    "value": 1,
+    "candidates_before": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "generator": "fg-sudoku-release-v1"
+  },
+  {
+    "id": 1,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 1,
+    "c": 0,
+    "value": 1,
+    "candidates_before": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "id": 2,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 2,
+    "c": 1,
+    "value": 1,
+    "candidates_before": [
+      1,
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "id": 3,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 0,
+    "c": 0,
+    "value": 2,
+    "candidates_before": [
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "id": 4,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 0,
+    "c": 0,
+    "value": 3,
+    "candidates_before": [
+      3,
+      4
+    ]
+  },
+  {
+    "id": 5,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 1,
+    "c": 0,
+    "value": 3,
+    "candidates_before": [
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "id": 6,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 2,
+    "c": 1,
+    "value": 3,
+    "candidates_before": [
+      2,
+      3,
+      4
+    ]
+  },
+  {
+    "id": 7,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 1,
+    "c": 0,
+    "value": 4,
+    "candidates_before": [
+      2,
+      4
+    ]
+  },
+  {
+    "id": 8,
+    "rule": "initial_elim",
+    "action": "eliminate",
+    "r": 2,
+    "c": 1,
+    "value": 4,
+    "candidates_before": [
+      2,
+      4
+    ]
+  },
+  {
+    "id": 9,
+    "rule": "naked_single",
+    "action": "assign",
+    "r": 0,
+    "c": 0,
+    "value": 4,
+    "candidates_before": [
+      4
+    ]
+  },
+  {
+    "id": 10,
+    "rule": "naked_single",
+    "action": "assign",
+    "r": 1,
+    "c": 0,
+    "value": 2,
+    "candidates_before": [
+      2
+    ]
+  },
+  {
+    "id": 11,
+    "rule": "naked_single",
+    "action": "assign",
+    "r": 2,
+    "c": 1,
+    "value": 2,
+    "candidates_before": [
+      2
+    ]
+  }
+]

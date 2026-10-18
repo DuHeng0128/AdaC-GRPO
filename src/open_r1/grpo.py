@@ -2,12 +2,10 @@
 # Copyright 2025 The HuggingFace Team. All rights reserved.
 # Licensed under the Apache License, Version 2.0
 
-import gc
 import os
 import json
 import re
 import random
-import math
 from datetime import datetime
 from dataclasses import dataclass, field
 from typing import Optional, Dict, List
@@ -15,14 +13,12 @@ import ast
 import time
 
 from datasets import Dataset as HFDataset, DatasetDict, load_dataset
-import deepspeed
-import torch.distributed as dist
-from transformers import Qwen2VLForConditionalGeneration
 import torch
-from trainer import Qwen2VLGRPOTrainer, Qwen2VLGRPOVLLMTrainerModified
-from trl import GRPOConfig, GRPOTrainer, ModelConfig, ScriptArguments, TrlParser, get_peft_config
+from open_r1.trainer import Qwen2VLGRPOTrainer, Qwen2VLGRPOVLLMTrainerModified
+from open_r1.data import resolve_asset
+from open_r1.curriculum import evaluation_sample_size, select_group, restart_deepspeed_scheduler
+from trl import GRPOConfig, ModelConfig, ScriptArguments, TrlParser, get_peft_config
 
-from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from rouge_score import rouge_scorer
 
 difficulty_mapping = {
@@ -61,16 +57,16 @@ class GRPOScriptArguments(ScriptArguments):
         metadata={"help": "Whether to use curriculum learning (split dataset by difficulty and train subsets)."},
     )
     eval_sample_ratio: float = field(
-        default=1,
-        metadata={"help": "Fraction of each subset to sample for evaluation (default 1/16)."},
+        default=0.25,
+        metadata={"help": "Fraction of each subset to sample for online evaluation (paper: 1/4)."},
     )
     early_stop_same_repeat: int = field(
         default=3,
         metadata={"help": "Stop early if same subset trained this many times in a row."},
     )
     accuracy_threshold_for_switch: float = field(
-        default=0.1,
-        metadata={"help": "Only switch to an undone subset if its eval accuracy > this threshold."},
+        default=0.3,
+        metadata={"help": "Lower ZPD bound (paper: 0.3)."},
     )
     accuracy_threshold_for_double: Optional[float] = field(
         default=None,
@@ -83,11 +79,11 @@ class GRPOScriptArguments(ScriptArguments):
         },
     )
     eval_fixed_size: int = field(
-        default=16,
-        metadata={"help": "Maximum number of samples per subset used during curriculum evaluation."},
+        default=0,
+        metadata={"help": "Optional online evaluation cap; 0 keeps the full eval_sample_ratio sample."},
     )
     epochs_per_subset: int = field(
-        default=1,
+        default=3,
         metadata={"help": "Number of training epochs to run on each curriculum subset."},
     )
     start_subset: Optional[str] = field(
@@ -382,9 +378,15 @@ def load_raw_dataset(script_args):
             raw = json.load(f)
         if isinstance(raw, dict):
             data_list = _mapping_json_to_list(raw)
+            for entry in data_list:
+                entry["puzzle_path"] = resolve_asset(entry["puzzle_path"], script_args.dataset_name)
             ds = HFDataset.from_list(data_list)
             return DatasetDict({"train": ds})
         elif isinstance(raw, list):
+            for entry in raw:
+                asset = entry.get("puzzle_path", entry.get("path"))
+                if asset:
+                    entry["puzzle_path"] = resolve_asset(asset, script_args.dataset_name)
             ds = HFDataset.from_list(raw)
             return DatasetDict({"train": ds})
         else:
@@ -465,10 +467,10 @@ def split_by_difficulty(full_ds: HFDataset, difficulty_field: str = "difficulty"
         out["_OTHER_"] = HFDataset.from_list(other)
     return out
 
-def sample_dataset(ds: HFDataset, ratio: float, seed: int = 42):
+def sample_dataset(ds: HFDataset, ratio: float, seed: int = 42, cap: int = 0):
     if len(ds) == 0:
         return ds
-    k = max(1, int(math.ceil(len(ds) * ratio)))
+    k = evaluation_sample_size(len(ds), ratio, cap)
     rng = random.Random(seed)
     idxs = list(range(len(ds)))
     rng.shuffle(idxs)
@@ -646,13 +648,12 @@ class CurriculumController:
         # we skip reinitialisation and return the existing optimizer/scheduler so
         # the ZeRO-3 engine remains the sole owner of parameter updates.
         import transformers.trainer as _trainer_module
-        from accelerate.utils import DeepSpeedOptimizerWrapper as _DSOptWrapper
+        from accelerate.utils import DeepSpeedOptimizerWrapper as _DSOptWrapper, DeepSpeedSchedulerWrapper as _DSSchedulerWrapper
         _orig_deepspeed_init = _trainer_module.deepspeed_init
 
         def _curriculum_deepspeed_init(trainer, num_training_steps, **kwargs):
             if isinstance(getattr(trainer, 'optimizer', None), _DSOptWrapper):
-                # Engine already initialised for this trainer – reuse it.
-                return trainer.optimizer, trainer.lr_scheduler
+                return restart_deepspeed_scheduler(trainer, num_training_steps, _DSSchedulerWrapper)
             return _orig_deepspeed_init(trainer, num_training_steps, **kwargs)
 
         _trainer_module.deepspeed_init = _curriculum_deepspeed_init
@@ -682,20 +683,20 @@ class CurriculumController:
         the original dataset.  Returns {label -> accuracy}.
         """
         self._ensure_trainer("eval")
-        FIXED_EVAL_SIZE = self.script_args.eval_fixed_size
+        eval_cap = self.script_args.eval_fixed_size
         res = {}
 
         from datasets import concatenate_datasets
         all_samples = []
+        sample_sizes = {}
         for lab in self.order:
             st = self.states[lab]
             if st.done or len(st.dataset) == 0:
                 st.last_accuracy = 0.0
                 res[lab] = 0.0
                 continue
-            sample = sample_dataset(st.dataset, self.script_args.eval_sample_ratio, seed=0)
-            if len(sample) > FIXED_EVAL_SIZE:
-                sample = sample.select(range(FIXED_EVAL_SIZE))
+            sample = sample_dataset(st.dataset, self.script_args.eval_sample_ratio, seed=0, cap=eval_cap)
+            sample_sizes[lab] = len(sample)
             all_samples.append(sample)
 
         if not all_samples:
@@ -726,7 +727,7 @@ class CurriculumController:
                 acc = label_metrics.get(difficulty_mapping[lab], 0.0)
                 st.last_accuracy = acc
                 res[lab] = acc
-                print(f"[Curriculum] eval {lab}: acc={acc:.4f} sample_size={FIXED_EVAL_SIZE}")
+                print(f"[Curriculum] eval {lab}: acc={acc:.4f} sample_size={sample_sizes[lab]}")
 
         finally:
             self.trainer.eval_dataset = old_eval_ds
@@ -789,21 +790,8 @@ class CurriculumController:
         self.trainer.state.epoch = 0
         self.trainer.model.train()
 
-        # Reset LR scheduler so each subset gets a fresh cosine curve sized to
-        # its own step count (avoids training at near-zero LR after the first subset).
-        # Skip on the first call: optimizer is None until DeepSpeed initializes inside train().
-        if self.trainer.optimizer is not None:
-            num_steps = math.ceil(
-                len(st.dataset) / (
-                    self.training_args.per_device_train_batch_size
-                    * self.training_args.world_size
-                    * self.training_args.gradient_accumulation_steps
-                )
-            ) * effective_epochs
-            self.trainer.create_scheduler(num_training_steps=num_steps, optimizer=self.trainer.optimizer)
-            print(f"[Curriculum] Reset scheduler for '{label}': num_training_steps={num_steps}")
-
-        # Train
+        # Trainer derives the actual step count for the selected subset. The
+        # DeepSpeed init hook restarts its schedule while preserving ZeRO state.
         self.trainer.train()
 
         # Save checkpoint
@@ -873,15 +861,7 @@ class CurriculumController:
             self.train_subset(self.current_label, epochs=next_epochs)
             print(f"[Curriculum] Training time: {time.time()-t0:.1f}s")
 
-            self.states[self.current_label].done = True
             self.history.append(self.current_label)
-
-            undone_exist = any(
-                not st.done and len(st.dataset) > 0 for st in self.states.values()
-            )
-            if not undone_exist:
-                print("[Curriculum] All subsets done. Exiting.")
-                break
 
             # 2. Evaluate (reuses self.trainer, swaps eval_dataset)
             t0 = time.time()
@@ -892,21 +872,21 @@ class CurriculumController:
             threshold_low  = self.script_args.accuracy_threshold_for_switch
             threshold_high = self.script_args.accuracy_threshold_upper
             strategy       = self.script_args.curriculum_selection_strategy
-            candidates = {
+            # A training call does not imply mastery. Retain the active group
+            # until online accuracy exceeds the paper's upper ZPD bound.
+            for st in self.states.values():
+                if not st.done and st.last_accuracy > threshold_high:
+                    st.done = True
+            if not any(not st.done and len(st.dataset) > 0 for st in self.states.values()):
+                print("[Curriculum] All subsets mastered. Exiting.")
+                break
+            accuracies = {
                 lab: st.last_accuracy
                 for lab, st in self.states.items()
-                if not st.done and threshold_low < st.last_accuracy <= threshold_high
+                if not st.done and len(st.dataset) > 0
             }
-            if not candidates:
-                next_label = self.current_label
-            elif strategy == "median":
-                sorted_cands = sorted(candidates.items(), key=lambda kv: kv[1])
-                next_label = sorted_cands[len(sorted_cands) // 2][0]
-            elif strategy == "random":
-                next_label = random.choice(list(candidates.keys()))
-            else:  # argmax (default)
-                next_label = max(candidates.items(), key=lambda kv: kv[1])[0]
-            print(f"[Curriculum] strategy={strategy} candidates={candidates} → next={next_label}")
+            next_label = select_group(accuracies, self.current_label, threshold_low, threshold_high, strategy)
+            print(f"[Curriculum] strategy={strategy} accuracies={accuracies} → next={next_label}")
 
             if next_label == self.current_label:
                 self.same_counter += 1

@@ -1,0 +1,17 @@
+name: Bug report
+description: Report a reproducible problem with data, training, or evaluation.
+body:
+  - type: textarea
+    id: command
+    attributes:
+      label: Command and observed behavior
+      description: Include the exact command, traceback, expected behavior, and relevant grid size.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment and minimal example
+      description: Include Python, CUDA, PyTorch, Transformers, TRL, and DeepSpeed versions when relevant.
+    validations:
+      required: true

@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: "If you use AdaC-GRPO or FG-Sudoku, please cite the paper below."
+type: software
+title: "AdaC-GRPO"
+version: 0.1.0
+repository-code: "https://github.com/DuHeng0128/AdaC-GRPO"
+url: "https://arxiv.org/abs/2610.13184"
+license:
+  - MIT
+  - Apache-2.0
+authors:
+  - family-names: Li
+    given-names: Sida
+  - family-names: Liu
+    given-names: Yuanxin
+  - family-names: Yao
+    given-names: Linli
+  - family-names: Li
+    given-names: Shicheng
+  - family-names: Sun
+    given-names: Xu
+  - family-names: Bai
+    given-names: Haoli
+  - family-names: Li
+    given-names: Xiaohui
+preferred-citation:
+  type: article
+  title: "AdaC-GRPO: Towards Mastering Long-Horizon Visual Sudoku Puzzles via Adaptive Curriculum Learning"
+  journal: "arXiv preprint arXiv:2610.13184"
+  year: 2026
+  url: "https://arxiv.org/abs/2610.13184"
+  authors:
+    - family-names: Li
+      given-names: Sida
+    - family-names: Liu
+      given-names: Yuanxin
+    - family-names: Yao
+      given-names: Linli
+    - family-names: Li
+      given-names: Shicheng
+    - family-names: Sun
+      given-names: Xu
+    - family-names: Bai
+      given-names: Haoli
+    - family-names: Li
+      given-names: Xiaohui

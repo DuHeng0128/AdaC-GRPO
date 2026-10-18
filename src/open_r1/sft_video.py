@@ -11,25 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Example usage:
-accelerate launch \
-    --config_file=deepspeed_zero2.yaml \
-    train_video_llm.py \
-    --dataset_name mfarre/simplevideoshorts \
-    --model_name_or_path Qwen/Qwen2-VL-7B-Instruct \
-    --per_device_train_batch_size 1 \
-    --gradient_accumulation_steps 4 \
-    --output_dir video-llm-output \
-    --bf16 \
-    --torch_dtype bfloat16 \
-    --gradient_checkpointing
-"""
+"""Supervised warm-up on the FG-Sudoku demonstrations."""
 
 import os
 import json
 import random
-import requests
 import torch
 from datasets import load_dataset
 from transformers import (
@@ -39,8 +25,13 @@ from transformers import (
     Qwen2VLProcessor,
     Qwen2VLForConditionalGeneration,
     Qwen2_5_VLForConditionalGeneration,
-    Qwen3VLForConditionalGeneration
 )
+try:
+    from transformers import Qwen3VLForConditionalGeneration
+except ImportError:
+    Qwen3VLForConditionalGeneration = None
+
+from open_r1.data import resolve_asset
 from trl import (
     ModelConfig,
     ScriptArguments,
@@ -63,26 +54,7 @@ def get_current_device():
     """Get the current device. For GPU we return the local process index to enable multiple GPU training."""
     return Accelerator().local_process_index if torch.cuda.is_available() else "cpu"
 
-def download_video(url: str, folder: str = '/tmp/videos/') -> str:
-    """Download video if not already present locally."""
-    filename = url.split("/")[-1]
-    local_path = os.path.join(folder, filename)
-
-    if os.path.exists(local_path):
-        return local_path
-
-    try:
-        with requests.get(url, stream=True) as r:
-            r.raise_for_status()
-            with open(local_path, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
-        return local_path
-    except requests.RequestException as e:
-        raise Exception(f"Failed to download video: {e}")
-
-def prepare_dataset(example: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
+def prepare_dataset(example: Dict[str, Any], dataset_file=None) -> Dict[str, List[Dict[str, Any]]]:
     """Prepare dataset example for training."""
     system_message = "You are a helpful assistant"
     
@@ -115,7 +87,7 @@ def prepare_dataset(example: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
             "content": [
                 {
                     "type": example['data_type'],
-                    example['data_type']: os.getcwd() + "/sudoku/" + example['path']
+                    example['data_type']: resolve_asset(example['path'], dataset_file)
                 },
                 {
                     "type": "text",
@@ -135,22 +107,24 @@ def prepare_dataset(example: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
 def collate_fn(examples: List[Dict[str, Any]]) -> Dict[str, torch.Tensor]:
     """Collate batch of examples for training."""
     texts = []
-    # video_inputs = []
-    # image_inputs = []
+    image_inputs = []
+    video_inputs = []
 
     for i, example in enumerate(examples):
         try:
 
             texts.append(processor.apply_chat_template(example["messages"], tokenize=False))
-            image_inputs, video_inputs, video_kwargs = process_vision_info(example["messages"], return_video_kwargs=True)
+            images, videos = process_vision_info(example["messages"])
+            image_inputs.extend(images or [])
+            video_inputs.extend(videos or [])
             
         except Exception as e:
             raise ValueError(f"Failed to process example {i}: {e}")
 
     inputs = processor(
         text=texts,
-        images=image_inputs,
-        videos=video_inputs,
+        images=image_inputs or None,
+        videos=video_inputs or None,
         return_tensors="pt",
         padding=True
     )
@@ -216,6 +190,8 @@ if __name__ == "__main__":
     elif "Qwen2.5-VL" in model_config.model_name_or_path:
         model = Qwen2_5_VLForConditionalGeneration.from_pretrained(model_config.model_name_or_path, **model_kwargs)
     elif "Qwen3-VL" in model_config.model_name_or_path:
+        if Qwen3VLForConditionalGeneration is None:
+            raise ImportError("Qwen3-VL needs a transformers version that includes Qwen3VLForConditionalGeneration; use a separate environment from the historical Qwen2.5-VL recipe.")
         model = Qwen3VLForConditionalGeneration.from_pretrained(model_config.model_name_or_path, **model_kwargs)
     else:
         model = AutoModelForVision2Seq.from_pretrained(model_config.model_name_or_path, **model_kwargs)
@@ -226,7 +202,7 @@ if __name__ == "__main__":
     )
 
     # Prepare dataset
-    prepared_dataset = [prepare_dataset(example) for example in dataset['train']]
+    prepared_dataset = [prepare_dataset(example, script_args.dataset_name) for example in dataset['train']]
 
     # Initialize wandb if specified
     if training_args.report_to == "wandb":
