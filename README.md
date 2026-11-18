@@ -2,8 +2,7 @@
 
 # AdaC-GRPO
 
-### Towards Mastering Long-Horizon Visual Sudoku Puzzles
-**via Adaptive Curriculum Learning**
+### Towards Mastering Long-Horizon Visual Sudoku Puzzles via Adaptive Curriculum Learning
 
 Sida Li · Yuanxin Liu · Linli Yao · Shicheng Li · Xu Sun · Haoli Bai · Xiao-Hui Li
 
